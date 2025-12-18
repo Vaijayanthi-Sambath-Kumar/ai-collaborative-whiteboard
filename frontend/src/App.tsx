@@ -14,7 +14,7 @@ function App() {
   
   // STATE: Modes & Colors
   const [isDrawing, setIsDrawing] = useState(true);
-  const [isEraser, setIsEraser] = useState(false); // NEW: Track Eraser Mode
+  const [isEraser, setIsEraser] = useState(false); 
   const [brushColor, setBrushColor] = useState('#000000'); 
 
   const isRemoteUpdate = useRef(false);
@@ -54,11 +54,9 @@ function App() {
     if (!fabricCanvas || !fabricCanvas.freeDrawingBrush) return;
 
     if (isEraser) {
-        // ERASER MODE: White color, thicker brush
         fabricCanvas.freeDrawingBrush.color = '#ffffff';
         fabricCanvas.freeDrawingBrush.width = 20; 
     } else {
-        // PEN MODE: User's color, normal width
         fabricCanvas.freeDrawingBrush.color = brushColor;
         fabricCanvas.freeDrawingBrush.width = 5;
     }
@@ -70,14 +68,14 @@ function App() {
   const activateDraw = () => {
     if (!fabricCanvas) return;
     setIsDrawing(true);
-    setIsEraser(false); // Turn off eraser
+    setIsEraser(false); 
     fabricCanvas.isDrawingMode = true;
   };
 
   const activateEraser = () => {
     if (!fabricCanvas) return;
-    setIsDrawing(true); // Eraser is technically a drawing tool
-    setIsEraser(true);  // Turn on eraser flag
+    setIsDrawing(true); 
+    setIsEraser(true); 
     fabricCanvas.isDrawingMode = true;
   };
 
@@ -99,6 +97,27 @@ function App() {
     document.body.removeChild(link);
   };
 
+  // NEW: Clear Board Function
+  const handleClear = () => {
+    if (!fabricCanvas) return;
+
+    if (window.confirm("Are you sure you want to clear the entire board?")) {
+        fabricCanvas.clear();
+        fabricCanvas.backgroundColor = '#ffffff'; // Restore white background
+        
+        // Restore brush settings after clear
+        fabricCanvas.isDrawingMode = isDrawing;
+        if (fabricCanvas.freeDrawingBrush) {
+             fabricCanvas.freeDrawingBrush.color = isEraser ? '#ffffff' : brushColor;
+             fabricCanvas.freeDrawingBrush.width = isEraser ? 20 : 5;
+        }
+
+        fabricCanvas.renderAll();
+        // Notify others that the board is empty
+        socket.emit('canvas-update', fabricCanvas.toJSON()); 
+    }
+  };
+
   // --- 4. Receive Updates ---
   useEffect(() => {
     if (!fabricCanvas) return;
@@ -108,7 +127,6 @@ function App() {
       try {
         await fabricCanvas.loadFromJSON(data);
         
-        // Restore modes after loading data
         fabricCanvas.isDrawingMode = isDrawing; 
         
         if (fabricCanvas.freeDrawingBrush) {
@@ -139,7 +157,7 @@ function App() {
     try {
       const res = await axios.post(`${BACKEND_URL}/generate-image`, { prompt });
       
-      activateSelect(); // Switch to select mode to move image
+      activateSelect();
 
       const img = await fabric.FabricImage.fromURL(res.data.imageUrl, { crossOrigin: 'anonymous' });
       img.set({ left: 100, top: 100 });
@@ -168,7 +186,7 @@ function App() {
             value={brushColor} 
             onChange={(e) => {
                 setBrushColor(e.target.value);
-                if (isEraser) activateDraw(); // Auto-switch back to pen if they pick a color
+                if (isEraser) activateDraw(); 
             }} 
             style={{ width: '40px', height: '40px', cursor: 'pointer', border: 'none', background: 'transparent' }}
           />
@@ -190,7 +208,7 @@ function App() {
         <button 
           onClick={activateEraser}
           style={{
-            background: isEraser ? '#dc3545' : '#6c757d', // Red when active
+            background: isEraser ? '#dc3545' : '#6c757d', 
             color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
           }}
         >
@@ -205,6 +223,16 @@ function App() {
           }}
         >
           ✋ Move
+        </button>
+
+        <button 
+          onClick={handleClear}
+          style={{
+            background: '#ffc107', // Yellow/Orange for caution
+            color: 'black', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
+          }}
+        >
+          🗑️ Clear
         </button>
 
         <div style={{ width: '1px', height: '30px', background: '#ddd' }}></div>
