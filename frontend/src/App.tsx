@@ -50,8 +50,10 @@ function App() {
 
   // --- 2. Handle Color Changes ---
   // Whenever 'brushColor' changes, update the canvas brush
+// --- 2. Handle Color Changes ---
   useEffect(() => {
-    if (fabricCanvas) {
+    // Check if canvas AND brush exist before setting color
+    if (fabricCanvas && fabricCanvas.freeDrawingBrush) {
       fabricCanvas.freeDrawingBrush.color = brushColor;
     }
   }, [brushColor, fabricCanvas]);
@@ -68,13 +70,17 @@ function App() {
   useEffect(() => {
     if (!fabricCanvas) return;
 
-    const handleRemoteUpdate = async (data: any) => {
+const handleRemoteUpdate = async (data: any) => {
       isRemoteUpdate.current = true;
       try {
         await fabricCanvas.loadFromJSON(data);
-        fabricCanvas.isDrawingMode = isDrawing; // Restore mode
-        // Restore brush color (sometimes loadFromJSON resets it)
-        fabricCanvas.freeDrawingBrush.color = brushColor; 
+        fabricCanvas.isDrawingMode = isDrawing; 
+        
+        // FIX: Safety check here too
+        if (fabricCanvas.freeDrawingBrush) {
+            fabricCanvas.freeDrawingBrush.color = brushColor; 
+        }
+        
         fabricCanvas.renderAll();
       } catch (e) {
         console.error(e);
