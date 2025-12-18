@@ -12,9 +12,10 @@ function App() {
   const [fabricCanvas, setFabricCanvas] = useState<fabric.Canvas | null>(null);
   const [prompt, setPrompt] = useState('');
   
-  // STATE: Drawing Mode & Brush Color
+  // STATE: Modes & Colors
   const [isDrawing, setIsDrawing] = useState(true);
-  const [brushColor, setBrushColor] = useState('#000000'); // Default black
+  const [isEraser, setIsEraser] = useState(false); // NEW: Track Eraser Mode
+  const [brushColor, setBrushColor] = useState('#000000'); 
 
   const isRemoteUpdate = useRef(false);
 
@@ -32,7 +33,7 @@ function App() {
     // Initial Brush Settings
     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
     canvas.freeDrawingBrush.width = 5;
-    canvas.freeDrawingBrush.color = brushColor; 
+    canvas.freeDrawingBrush.color = brushColor;
 
     setFabricCanvas(canvas);
 
@@ -48,33 +49,48 @@ function App() {
     return () => { canvas.dispose(); };
   }, []);
 
-  // --- 2. Handle Color Changes ---
+  // --- 2. Handle Brush & Eraser Logic ---
   useEffect(() => {
-    if (fabricCanvas && fabricCanvas.freeDrawingBrush) {
-      fabricCanvas.freeDrawingBrush.color = brushColor;
-    }
-  }, [brushColor, fabricCanvas]);
+    if (!fabricCanvas || !fabricCanvas.freeDrawingBrush) return;
 
-  // --- 3. Toggle Mode ---
-  const toggleMode = () => {
+    if (isEraser) {
+        // ERASER MODE: White color, thicker brush
+        fabricCanvas.freeDrawingBrush.color = '#ffffff';
+        fabricCanvas.freeDrawingBrush.width = 20; 
+    } else {
+        // PEN MODE: User's color, normal width
+        fabricCanvas.freeDrawingBrush.color = brushColor;
+        fabricCanvas.freeDrawingBrush.width = 5;
+    }
+
+  }, [brushColor, isEraser, fabricCanvas]);
+
+  // --- 3. Toolbar Actions ---
+  
+  const activateDraw = () => {
     if (!fabricCanvas) return;
-    const newMode = !isDrawing;
-    setIsDrawing(newMode);
-    fabricCanvas.isDrawingMode = newMode;
+    setIsDrawing(true);
+    setIsEraser(false); // Turn off eraser
+    fabricCanvas.isDrawingMode = true;
   };
 
-  // --- 4. NEW: Save Functionality ---
+  const activateEraser = () => {
+    if (!fabricCanvas) return;
+    setIsDrawing(true); // Eraser is technically a drawing tool
+    setIsEraser(true);  // Turn on eraser flag
+    fabricCanvas.isDrawingMode = true;
+  };
+
+  const activateSelect = () => {
+    if (!fabricCanvas) return;
+    setIsDrawing(false);
+    setIsEraser(false);
+    fabricCanvas.isDrawingMode = false;
+  };
+
   const handleSave = () => {
     if (!fabricCanvas) return;
-
-    // Convert canvas to image (Data URL)
-    const dataURL = fabricCanvas.toDataURL({
-        format: 'png',
-        quality: 1,
-        multiplier: 2, // Higher resolution
-    });
-
-    // Create a fake link and click it to download
+    const dataURL = fabricCanvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
     const link = document.createElement('a');
     link.download = 'canvas-royale.png';
     link.href = dataURL;
@@ -83,7 +99,7 @@ function App() {
     document.body.removeChild(link);
   };
 
-  // --- 5. Receive Updates ---
+  // --- 4. Receive Updates ---
   useEffect(() => {
     if (!fabricCanvas) return;
 
@@ -91,10 +107,18 @@ function App() {
       isRemoteUpdate.current = true;
       try {
         await fabricCanvas.loadFromJSON(data);
+        
+        // Restore modes after loading data
         fabricCanvas.isDrawingMode = isDrawing; 
         
         if (fabricCanvas.freeDrawingBrush) {
-            fabricCanvas.freeDrawingBrush.color = brushColor; 
+            if (isEraser) {
+                fabricCanvas.freeDrawingBrush.color = '#ffffff';
+                fabricCanvas.freeDrawingBrush.width = 20;
+            } else {
+                fabricCanvas.freeDrawingBrush.color = brushColor;
+                fabricCanvas.freeDrawingBrush.width = 5;
+            }
         }
         
         fabricCanvas.renderAll();
@@ -107,17 +131,15 @@ function App() {
 
     socket.on('canvas-update', handleRemoteUpdate);
     return () => { socket.off('canvas-update', handleRemoteUpdate); };
-  }, [fabricCanvas, isDrawing, brushColor]);
+  }, [fabricCanvas, isDrawing, isEraser, brushColor]);
 
-  // --- 6. AI Generation ---
+  // --- 5. AI Generation ---
   const handleGenerateAI = async () => {
     if (!prompt || !fabricCanvas) return;
     try {
-      // FIX: Use BACKEND_URL instead of hardcoded localhost so it works on Vercel
       const res = await axios.post(`${BACKEND_URL}/generate-image`, { prompt });
       
-      setIsDrawing(false);
-      fabricCanvas.isDrawingMode = false;
+      activateSelect(); // Switch to select mode to move image
 
       const img = await fabric.FabricImage.fromURL(res.data.imageUrl, { crossOrigin: 'anonymous' });
       img.set({ left: 100, top: 100 });
@@ -144,30 +166,53 @@ function App() {
           <input 
             type="color" 
             value={brushColor} 
-            onChange={(e) => setBrushColor(e.target.value)} 
+            onChange={(e) => {
+                setBrushColor(e.target.value);
+                if (isEraser) activateDraw(); // Auto-switch back to pen if they pick a color
+            }} 
             style={{ width: '40px', height: '40px', cursor: 'pointer', border: 'none', background: 'transparent' }}
-            title="Choose Brush Color"
           />
         </div>
 
         <div style={{ width: '1px', height: '30px', background: '#ddd' }}></div>
 
-        {/* Mode Toggle */}
+        {/* TOOL BUTTONS */}
         <button 
-          onClick={toggleMode}
+          onClick={activateDraw}
           style={{
-            background: isDrawing ? '#007bff' : '#6c757d',
+            background: (isDrawing && !isEraser) ? '#007bff' : '#6c757d',
             color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
           }}
         >
-          {isDrawing ? '✏️ Drawing' : '✋ Move'}
+          ✏️ Draw
         </button>
 
-        {/* NEW: Save Button */}
+        <button 
+          onClick={activateEraser}
+          style={{
+            background: isEraser ? '#dc3545' : '#6c757d', // Red when active
+            color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
+          }}
+        >
+          🧹 Eraser
+        </button>
+
+        <button 
+          onClick={activateSelect}
+          style={{
+            background: (!isDrawing) ? '#007bff' : '#6c757d',
+            color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
+          }}
+        >
+          ✋ Move
+        </button>
+
+        <div style={{ width: '1px', height: '30px', background: '#ddd' }}></div>
+
         <button 
           onClick={handleSave}
           style={{
-            background: '#6610f2', // Purple
+            background: '#6610f2',
             color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
           }}
         >
