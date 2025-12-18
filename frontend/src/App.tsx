@@ -32,7 +32,7 @@ function App() {
     // Initial Brush Settings
     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
     canvas.freeDrawingBrush.width = 5;
-    canvas.freeDrawingBrush.color = brushColor; // Use state color
+    canvas.freeDrawingBrush.color = brushColor; 
 
     setFabricCanvas(canvas);
 
@@ -49,10 +49,7 @@ function App() {
   }, []);
 
   // --- 2. Handle Color Changes ---
-  // Whenever 'brushColor' changes, update the canvas brush
-// --- 2. Handle Color Changes ---
   useEffect(() => {
-    // Check if canvas AND brush exist before setting color
     if (fabricCanvas && fabricCanvas.freeDrawingBrush) {
       fabricCanvas.freeDrawingBrush.color = brushColor;
     }
@@ -66,17 +63,36 @@ function App() {
     fabricCanvas.isDrawingMode = newMode;
   };
 
-  // --- 4. Receive Updates ---
+  // --- 4. NEW: Save Functionality ---
+  const handleSave = () => {
+    if (!fabricCanvas) return;
+
+    // Convert canvas to image (Data URL)
+    const dataURL = fabricCanvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 2, // Higher resolution
+    });
+
+    // Create a fake link and click it to download
+    const link = document.createElement('a');
+    link.download = 'canvas-royale.png';
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // --- 5. Receive Updates ---
   useEffect(() => {
     if (!fabricCanvas) return;
 
-const handleRemoteUpdate = async (data: any) => {
+    const handleRemoteUpdate = async (data: any) => {
       isRemoteUpdate.current = true;
       try {
         await fabricCanvas.loadFromJSON(data);
         fabricCanvas.isDrawingMode = isDrawing; 
         
-        // FIX: Safety check here too
         if (fabricCanvas.freeDrawingBrush) {
             fabricCanvas.freeDrawingBrush.color = brushColor; 
         }
@@ -93,11 +109,12 @@ const handleRemoteUpdate = async (data: any) => {
     return () => { socket.off('canvas-update', handleRemoteUpdate); };
   }, [fabricCanvas, isDrawing, brushColor]);
 
-  // --- 5. AI Generation ---
+  // --- 6. AI Generation ---
   const handleGenerateAI = async () => {
     if (!prompt || !fabricCanvas) return;
     try {
-      const res = await axios.post('http://localhost:4000/generate-image', { prompt });
+      // FIX: Use BACKEND_URL instead of hardcoded localhost so it works on Vercel
+      const res = await axios.post(`${BACKEND_URL}/generate-image`, { prompt });
       
       setIsDrawing(false);
       fabricCanvas.isDrawingMode = false;
@@ -143,7 +160,18 @@ const handleRemoteUpdate = async (data: any) => {
             color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
           }}
         >
-          {isDrawing ? '✏️ Drawing' : '✋ Select / Move'}
+          {isDrawing ? '✏️ Drawing' : '✋ Move'}
+        </button>
+
+        {/* NEW: Save Button */}
+        <button 
+          onClick={handleSave}
+          style={{
+            background: '#6610f2', // Purple
+            color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'
+          }}
+        >
+          💾 Save
         </button>
 
         <div style={{ width: '1px', height: '30px', background: '#ddd' }}></div>
