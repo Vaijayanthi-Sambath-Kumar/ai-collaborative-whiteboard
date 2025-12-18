@@ -3,7 +3,9 @@ import * as fabric from 'fabric';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io('http://localhost:4000');
+// Use the cloud URL if it exists, otherwise use localhost
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+const socket = io(BACKEND_URL);
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
