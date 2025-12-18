@@ -75,7 +75,9 @@ app.post('/generate-image', async (req, res) => {
 });
 
 // --- 3. START SERVER ---
-const PORT = 4000;
+// Allow the cloud platform (Render) to set the port, or use 4000 if local
+const PORT = process.env.PORT || 4000;
+
 server.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
