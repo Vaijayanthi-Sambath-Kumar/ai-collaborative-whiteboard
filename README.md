@@ -58,3 +58,11 @@ npm run dev
 1.  Open `http://localhost:5173` in your browser.
 2.  Open the same URL in a **second window** (or Incognito mode).
 3.  Draw on one screen — watch it appear on the other instantly!
+
+## 🔗 Live Demo
+
+### [🚀 Click here to launch the Whiteboard App](https://ai-collaborative-whiteboard.vercel.app)
+
+*(Note: The backend is hosted on a free instance, so it may take 30-50 seconds to wake up on the first load. Please be patient!)*
+
+---
