@@ -63,6 +63,6 @@ npm run dev
 
 ### [🚀 Click here to launch the Whiteboard App](https://ai-collaborative-whiteboard.vercel.app)
 
-*(Note: The backend is hosted on a free instance, so it may take 30-50 seconds to wake up on the first load. Please be patient!)*
+*(Note: The backend is hosted on a free instance, so it may take 30-50 seconds to wake up on the first load. Please be patient!Also, the images are generated currently using a dummy model, i.e., you won't get the image you requested for, but instead a random image will be generated. Please add the OpenAI API Key to get the desired output.)*
 
 ---
